@@ -357,7 +357,7 @@ Store                                         Scope   Blocking  Expiring Sharing
 :ref:`MemcachedStore <lock-store-memcached>`  remote  no        yes      no
 :ref:`MongoDbStore <lock-store-mongodb>`      remote  no        yes      no
 :ref:`PdoStore <lock-store-pdo>`              remote  no        yes      no
-:ref:`PostgreSqlStore <lock-store-pgsql>`     remote  yes       yes      yes
+:ref:`PostgreSqlStore <lock-store-pgsql>`     remote  yes       no       yes
 :ref:`RedisStore <lock-store-redis>`          remote  no        yes      yes
 :ref:`SemaphoreStore <lock-store-semaphore>`  local   yes       no       no
 :ref:`ZookeeperStore <lock-store-zookeeper>`  remote  no        no       no
@@ -604,7 +604,7 @@ PHP process is terminated::
 Reliability
 -----------
 
-The component guarantees that the same resource can't be lock twice as long as
+The component guarantees that the same resource can't be locked twice as long as
 the component is used in the following way.
 
 Remote Stores
@@ -618,12 +618,7 @@ Remote stores (:ref:`MemcachedStore <lock-store-memcached>`,
 :ref:`ZookeeperStore <lock-store-zookeeper>`) use a unique token to recognize
 the true owner of the lock. This token is stored in the
 :class:`Symfony\\Component\\Lock\\Key` object and is used internally by
-the ``Lock``, therefore this key must not be shared between processes (session,
-caching, fork, ...).
-
-.. caution::
-
-    Do not share a key between processes.
+the ``Lock``.
 
 Every concurrent process must store the ``Lock`` in the same server. Otherwise two
 different machines may allow two different processes to acquire the same ``Lock``.
@@ -773,7 +768,7 @@ Such an index can be created manually:
 
 .. code-block:: javascript
 
-    db.lock.ensureIndex(
+    db.lock.createIndex(
         { "expires_at": 1 },
         { "expireAfterSeconds": 0 }
     )

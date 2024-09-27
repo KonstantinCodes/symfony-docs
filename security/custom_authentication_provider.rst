@@ -7,10 +7,8 @@ How to Create a custom Authentication Provider
 .. caution::
 
     Creating a custom authentication system is hard, and almost definitely
-    **not** needed. Instead, see :doc:`/security/guard_authentication` for a
-    simple way to create an authentication system you will love. Do **not**
-    keep reading unless you want to learn the lowest level details of
-    authentication.
+    **not** needed. Instead, see the
+    :doc:`new authenticator-based system </security/authenticator_manager>`
 
 Symfony provides support for the most
 :doc:`common authentication mechanisms </security/auth_providers>`. However, your
@@ -218,7 +216,10 @@ the ``PasswordDigest`` header value matches with the user's password::
 
         public function authenticate(TokenInterface $token): WsseUserToken
         {
-            $user = $this->userProvider->loadUserByUsername($token->getUsername());
+            // The loadUserByIdentifier() and getUserIdentifier() methods were
+            // introduced in Symfony 5.3. In previous versions they were called
+            // loadUserByUsername() and getUsername() respectively
+            $user = $this->userProvider->loadUserByIdentifier($token->getUserIdentifier());
 
             if ($user && $this->validateDigest($token->digest, $token->nonce, $token->created, $user->getPassword())) {
                 $authenticatedToken = new WsseUserToken($user->getRoles());
@@ -508,17 +509,17 @@ You are finished! You can now define parts of your app as under WSSE protection.
     .. code-block:: php
 
         // config/packages/security.php
-        $container->loadFromExtension('security', [
-            // ...
+        use Symfony\Config\SecurityConfig;
 
-            'firewalls' => [
-                'wsse_secured' => [
-                    'pattern'   => '^/api/',
-                    'stateless' => true,
-                    'wsse'      => true,
-                ],
-            ],
-        ]);
+        return static function (SecurityConfig $security) {
+            // ....
+
+            $security->firewall('wsse_secured')
+                ->pattern('^/api/')
+                ->stateless(true)
+                ->wsse()
+            ;
+        };
 
 Congratulations! You have written your very own custom security authentication
 provider!
@@ -631,19 +632,18 @@ set to any desirable value per firewall.
     .. code-block:: php
 
         // config/packages/security.php
-        $container->loadFromExtension('security', [
-            // ...
+        use Symfony\Config\SecurityConfig;
 
-            'firewalls' => [
-                'wsse_secured' => [
-                    'pattern'   => '^/api/',
-                    'stateless' => true,
-                    'wsse'      => [
-                        'lifetime' => 30,
-                    ],
-                ],
-            ],
-        ]);
+        return static function (SecurityConfig $security) {
+            // ....
+
+            $security->firewall('wsse_secured')
+                ->pattern('^/api/')
+                ->stateless(true)
+                ->wsse()
+                    ->lifetime(30)
+            ;
+        };
 
 The rest is up to you! Any relevant configuration items can be defined
 in the factory and consumed or passed to the other classes in the container.

@@ -238,6 +238,13 @@ ULIDs are an alternative to UUIDs when using those is impractical. They provide
 128-bit compatibility with UUID, they are lexicographically sortable and they
 are encoded as 26-character strings (vs 36-character UUIDs).
 
+.. note::
+
+    If you generate more than one ULID during the same millisecond in the
+    same process then the random portion is incremented by one bit in order
+    to provide monotonicity for sorting. The random portion is not random
+    compared to the previous ULID in this case.
+
 Generating ULIDs
 ~~~~~~~~~~~~~~~~
 
@@ -261,6 +268,17 @@ following methods to create a ``Ulid`` object from it::
 
     The ``fromBinary()``, ``fromBase32()``, ``fromBase58()`` and ``fromRfc4122()``
     methods were introduced in Symfony 5.3.
+
+There's also a special ``NilUlid`` class to represent ULID ``null`` values::
+
+    use Symfony\Component\Uid\NilUlid;
+
+    $ulid = new NilUlid();
+    // equivalent to $ulid = new Ulid('00000000000000000000000000');
+
+.. versionadded:: 5.4
+
+    The ``NilUlid`` class was introduced in Symfony 5.4.
 
 Converting ULIDs
 ~~~~~~~~~~~~~~~~

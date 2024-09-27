@@ -130,7 +130,7 @@ Use Constants to Define Options that Rarely Change
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Configuration options like the number of items to display in some listing rarely
-change. Instead of defining them as :ref:`service container parameters <configuration-parameters>`,
+change. Instead of defining them as :ref:`configuration parameters <configuration-parameters>`,
 define them as PHP constants in the related classes. Example::
 
     // src/Entity/Post.php
@@ -170,7 +170,7 @@ Use Autowiring to Automate the Configuration of Application Services
 
 :doc:`Service autowiring </service_container/autowiring>` is a feature that
 reads the type-hints on your constructor (or other methods) and automatically
-passes the correct services to each method, making unnecessary to configure
+passes the correct services to each method, making it unnecessary to configure
 services explicitly and simplifying the application maintenance.
 
 Use it in combination with :ref:`service autoconfiguration <services-autoconfigure>`
@@ -244,7 +244,7 @@ Use Dependency Injection to Get Services
 
 If you extend the base ``AbstractController``, you can only access to the most
 common services (e.g ``twig``, ``router``, ``doctrine``, etc.), directly from the
-container via ``$this->container->get()`` or ``$this->get()``.
+container via ``$this->container->get()``.
 Instead, you must use dependency injection to fetch services by
 :ref:`type-hinting action method arguments <controller-accessing-services>` or
 constructor arguments.

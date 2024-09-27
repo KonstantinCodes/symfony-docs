@@ -4,6 +4,11 @@
 Custom Authentication System with Guard (API Token Example)
 ===========================================================
 
+.. deprecated:: 5.3
+
+    Guard authenticators are deprecated since Symfony 5.3 in favor of the
+    :doc:`new authenticator-based system </security/authenticator_manager>`.
+
 Guard authentication can be used to:
 
 * :doc:`Build a Login Form </security/form_login_setup>`
@@ -13,11 +18,6 @@ Guard authentication can be used to:
 
 and many more. In this example, we'll build an API token authentication
 system, so we can learn more about Guard in detail.
-
-.. tip::
-
-    A :doc:`new experimental authenticator-based system </security/experimental_authenticators>`
-    was introduced in Symfony 5.1, which will eventually replace Guards in Symfony 6.0.
 
 Step 1) Prepare your User Class
 -------------------------------
@@ -98,20 +98,18 @@ Next, configure your "user provider" to use this new ``apiToken`` property:
     .. code-block:: php
 
         // config/packages/security.php
-        $container->loadFromExtension('security', [
+        use Symfony\Config\SecurityConfig;
+
+        return static function (SecurityConfig $security) {
             // ...
 
-            'providers' => [
-                'your_db_provider' => [
-                    'entity' => [
-                        'class' => 'App\Entity\User',
-                        'property' => 'apiToken',
-                    ],
-                ],
-            ],
+            $security->provider('your_db_provider')
+                ->entity('App\Entity\User')
+                ->property('apiToken')
+            ;
 
             // ...
-        ]);
+        };
 
 Step 2) Create the Authenticator Class
 --------------------------------------
@@ -172,10 +170,10 @@ This requires you to implement several methods::
                 return null;
             }
 
-            // The "username" in this case is the apiToken, see the key `property`
+            // The user identifier in this case is the apiToken, see the key `property`
             // of `your_db_provider` in `security.yaml`.
             // If this returns a user, checkCredentials() is called next:
-            return $userProvider->loadUserByUsername($credentials);
+            return $userProvider->loadUserByIdentifier($credentials);
         }
 
         public function checkCredentials($credentials, UserInterface $user): bool
@@ -292,28 +290,25 @@ Finally, configure your ``firewalls`` key in ``security.yaml`` to use this authe
     .. code-block:: php
 
         // config/packages/security.php
-
-        // ...
         use App\Security\TokenAuthenticator;
+        use Symfony\Config\SecurityConfig;
 
-        $container->loadFromExtension('security', [
-            'firewalls' => [
-                'main'       => [
-                    'pattern'        => '^/',
-                    'anonymous'      => true,
-                    'lazy'           => true,
-                    'logout'         => true,
-                    'guard'          => [
-                        'authenticators'  => [
-                            TokenAuthenticator::class,
-                        ],
-                    ],
-                    // if you want, disable storing the user in the session
-                    // 'stateless' => true,
-                    // ...
-                ],
-            ],
-        ]);
+        return static function (SecurityConfig $security) {
+            $mainFirewall = $security->firewall('main');
+            $mainFirewall
+                ->pattern('^/')
+                ->lazy(true)
+                ->anonymous();
+
+            $mainFirewall->logout();
+            $mainFirewall
+                ->guard()
+                    ->authenticators([TokenAuthenticator::class])
+            ;
+            // if you want, disable storing the user in the session
+            // $mainFirewall->stateless(true);
+            // ...
+        };
 
 You did it! You now have a fully-working API token authentication system. If your
 homepage required ``ROLE_USER``, then you could test it under different conditions:

@@ -48,6 +48,7 @@ on all types for which ``FormType`` is the parent.
 |                           | - `translation_domain`_                                            |
 |                           | - `label_translation_parameters`_                                  |
 |                           | - `attr_translation_parameters`_                                   |
+|                           | - `priority`_                                                      |
 +---------------------------+--------------------------------------------------------------------+
 | Default invalid message   | This value is not valid.                                           |
 +---------------------------+--------------------------------------------------------------------+
@@ -178,7 +179,11 @@ of the form type tree (i.e. it cannot be used as a form type on its own).
 
 .. include:: /reference/forms/types/options/disabled.rst.inc
 
+.. _reference-form-option-label:
+
 .. include:: /reference/forms/types/options/label.rst.inc
+
+.. _reference-form-option-label-html:
 
 .. include:: /reference/forms/types/options/label_html.rst.inc
 
@@ -189,3 +194,5 @@ of the form type tree (i.e. it cannot be used as a form type on its own).
 .. include:: /reference/forms/types/options/label_translation_parameters.rst.inc
 
 .. include:: /reference/forms/types/options/attr_translation_parameters.rst.inc
+
+.. include:: /reference/forms/types/options/priority.rst.inc

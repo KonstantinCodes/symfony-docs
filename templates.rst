@@ -216,6 +216,30 @@ Consider the following routing configuration:
             }
         }
 
+    .. code-block:: php-attributes
+
+        // src/Controller/BlogController.php
+        namespace App\Controller;
+
+        // ...
+        use Symfony\Component\HttpFoundation\Response;
+        use Symfony\Component\Routing\Annotation\Route;
+
+        class BlogController extends AbstractController
+        {
+            #[Route('/', name: 'blog_index')]
+            public function index(): Response
+            {
+                // ...
+            }
+
+            #[Route('/article/{slug}', name: 'blog_post')]
+            public function show(string $slug): Response
+            {
+                // ...
+            }
+        }
+
     .. code-block:: yaml
 
         # config/routes.yaml
@@ -611,6 +635,17 @@ errors. It's useful to run it before deploying your application to production
 
     # you can also show the deprecated features used in your templates
     $ php bin/console lint:twig --show-deprecations templates/email/
+
+When running the linter inside `GitHub Actions`_, the output is automatically
+adapted to the format required by GitHub, but you can force that format too:
+
+.. code-block:: terminal
+
+    $ php bin/console lint:twig --format=github
+
+.. versionadded:: 5.4
+
+    The ``github`` output format was introduced in Symfony 5.4.
 
 Inspecting Twig Information
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1163,3 +1198,4 @@ Learn more
 .. _`Twig template inheritance`: https://twig.symfony.com/doc/2.x/tags/extends.html
 .. _`Twig block tag`: https://twig.symfony.com/doc/2.x/tags/block.html
 .. _`Cross-Site Scripting`: https://en.wikipedia.org/wiki/Cross-site_scripting
+.. _`GitHub Actions`: https://docs.github.com/en/free-pro-team@latest/actions

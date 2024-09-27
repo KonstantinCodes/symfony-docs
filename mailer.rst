@@ -61,7 +61,7 @@ over SMTP by configuring the DSN in your ``.env`` file (the ``user``,
             $containerConfigurator->extension('framework', [
                 'mailer' => [
                     'dsn' => '%env(MAILER_DSN)%',
-                ]
+                ],
             ]);
         };
 
@@ -112,11 +112,16 @@ Mailjet             ``composer require symfony/mailjet-mailer``
 Postmark            ``composer require symfony/postmark-mailer``
 SendGrid            ``composer require symfony/sendgrid-mailer``
 Sendinblue          ``composer require symfony/sendinblue-mailer``
+OhMySMTP            ``composer require symfony/oh-my-smtp-mailer``
 ==================  ==============================================
 
 .. versionadded:: 5.2
 
     The Sendinblue integration was introduced in Symfony 5.2.
+
+.. versionadded:: 5.4
+
+    The OhMySMTP integration was introduced in Symfony 5.4.
 
 Each library includes a :ref:`Symfony Flex recipe <symfony-flex>` that will add
 a configuration example to your ``.env`` file. For example, suppose you want to
@@ -166,6 +171,8 @@ party provider:
  Postmark             postmark+smtp://ID@default                           n/a                                         postmark+api://KEY@default
  Sendgrid             sendgrid+smtp://KEY@default                          n/a                                         sendgrid+api://KEY@default
  Sendinblue           sendinblue+smtp://USERNAME:PASSWORD@default          n/a                                         sendinblue+api://KEY@default
+ OhMySMTP             ohmysmtp+smtp://API_TOKEN@default                    n/a                                         ohmysmtp+api://API_TOKEN@default
+
 ==================== ==================================================== =========================================== ========================================
 
 .. caution::
@@ -173,6 +180,17 @@ party provider:
     If your credentials contain special characters, you must URL-encode them.
     For example, the DSN ``ses+smtp://ABC1234:abc+12/345@default`` should be
     configured as ``ses+smtp://ABC1234:abc%2B12%2F345@default``
+
+.. caution::
+
+    If you want to use ``ses+smtp`` transport together with :doc:`Messenger </messenger>`
+    to :ref:`send messages in background <mailer-sending-messages-async>`,
+    you need to add the ``ping_threshold`` parameter to your ``MAILER_DSN`` with
+    a value lower than ``10``: ``ses+smtp://USERNAME:PASSWORD@default?ping_threshold=9``
+
+    .. versionadded:: 5.4
+        
+        The ``ping_threshold`` option for ``ses-smtp`` was introduced in Symfony 5.4.
 
 .. note::
 
@@ -252,6 +270,57 @@ the application or when using a self-signed certificate::
 .. versionadded:: 5.1
 
     The ``verify_peer`` option was introduced in Symfony 5.1.
+
+Other Options
+~~~~~~~~~~~~~
+
+``command``
+    Command to be executed by ``sendmail`` transport::
+
+        $dsn = 'sendmail://default?command=/usr/sbin/sendmail%20-oi%20-t'
+
+    .. versionadded:: 5.2
+
+        This option was introduced in Symfony 5.2.
+
+
+``local_domain``
+    The domain name to use in ``HELO`` command::
+
+        $dsn = 'smtps://smtp.example.com?local_domain=example.org'
+
+    .. versionadded:: 5.2
+
+        This option was introduced in Symfony 5.2.
+
+``restart_threshold``
+    The maximum number of messages to send before re-starting the transport. It
+    can be used together with ``restart_threshold_sleep``::
+
+        $dsn = 'smtps://smtp.example.com?restart_threshold=10&restart_threshold_sleep=1'
+
+    .. versionadded:: 5.2
+
+        This option was introduced in Symfony 5.2.
+
+``restart_threshold_sleep``
+    The number of seconds to sleep between stopping and re-starting the transport.
+    It's common to combine it with ``restart_threshold``::
+
+        $dsn = 'smtps://smtp.example.com?restart_threshold=10&restart_threshold_sleep=1'
+
+    .. versionadded:: 5.2
+
+        This option was introduced in Symfony 5.2.
+
+``ping_threshold``
+    The minimum number of seconds between two messages required to ping the server::
+
+        $dsn = 'smtps://smtp.example.com?ping_threshold=200'
+
+    .. versionadded:: 5.2
+
+        This option was introduced in Symfony 5.2.
 
 Creating & Sending Messages
 ---------------------------
@@ -510,20 +579,20 @@ and headers.
     .. code-block:: php
 
         // config/packages/mailer.php
-        $container->loadFromExtension('framework', [
-            // ...
-            'mailer' => [
-                'envelope' => [
-                    'sender' => 'fabien@example.com',
-                    'recipients' => ['foo@example.com', 'bar@example.com'],
-                ],
-                'headers' => [
-                    'from' => 'Fabien <fabien@example.com>',
-                    'bcc' => 'baz@example.com',
-                    'X-Custom-Header' => 'foobar',
-                ],
-            ],
-        ]);
+        use Symfony\Config\FrameworkConfig;
+
+        return static function (FrameworkConfig $framework) {
+            $mailer = $framework->mailer();
+            $mailer
+                ->envelope()
+                    ->sender('fabien@example.com')
+                    ->recipients(['foo@example.com', 'bar@example.com'])
+            ;
+
+            $mailer->header('from')->value('Fabien <fabien@example.com>');
+            $mailer->header('bcc')->value('baz@example.com');
+            $mailer->header('X-Custom-Header')->value('foobar');
+        };
 
 .. versionadded:: 5.2
 
@@ -1092,25 +1161,27 @@ This can be configured by replacing the ``dsn`` configuration entry with a
     .. code-block:: php
 
         // config/packages/mailer.php
-        $container->loadFromExtension('framework', [
-            // ...
-            'mailer' => [
-                'transports' => [
-                    'main' => '%env(MAILER_DSN)%',
-                    'alternative' => '%env(MAILER_DSN_IMPORTANT)%',
-                ],
-            ],
-        ]);
+        use Symfony\Config\FrameworkConfig;
 
-By default the first transport is used. The other transports can be used by
-adding a text header ``X-Transport`` to an email::
+        return static function (FrameworkConfig $framework) {
+            $framework->mailer()
+                ->transport('main', '%env(MAILER_DSN)%')
+                ->transport('alternative', '%env(MAILER_DSN_IMPORTANT)%')
+            ;
+        };
 
-    // Send using first "main" transport ...
+By default the first transport is used. The other transports can be selected by
+adding an ``X-Transport`` header (which Mailer will remove automatically from
+the final email)::
+
+    // Send using first transport ("main"):
     $mailer->send($email);
 
-    // ... or use the "alternative" one
+    // ... or use the transport "alternative":
     $email->getHeaders()->addTextHeader('X-Transport', 'alternative');
     $mailer->send($email);
+
+.. _mailer-sending-messages-async:
 
 Sending Messages Async
 ----------------------
@@ -1163,16 +1234,17 @@ you have a transport called ``async``, you can route the message there:
     .. code-block:: php
 
         // config/packages/messenger.php
-        $container->loadFromExtension('framework', [
-            'messenger' => [
-                'transports' => [
-                    'async' => '%env(MESSENGER_TRANSPORT_DSN)%',
-                ],
-                'routing' => [
-                    'Symfony\Component\Mailer\Messenger\SendEmailMessage' => 'async',
-                ],
-            ],
-        ]);
+        use Symfony\Config\FrameworkConfig;
+
+        return static function (FrameworkConfig $framework) {
+            $framework->messenger()
+                ->transport('async')->dsn('%env(MESSENGER_TRANSPORT_DSN)%');
+
+            $framework->messenger()
+                ->routing('Symfony\Component\Mailer\Messenger\SendEmailMessage')
+                ->senders(['async']);
+        };
+
 
 Thanks to this, instead of being delivered immediately, messages will be sent to
 the transport to be handled later (see :ref:`messenger-worker`).
@@ -1213,11 +1285,12 @@ disable asynchronous delivery.
     .. code-block:: php
 
         // config/packages/mailer.php
-        $container->loadFromExtension('framework', [
-            'mailer' => [
-                'message_bus' => 'app.another_bus',
-            ],
-        ]);
+        use Symfony\Config\FrameworkConfig;
+
+        return static function (FrameworkConfig $framework) {
+            $framework->mailer()
+                ->messageBus('app.another_bus');
+        };
 
 .. versionadded:: 5.1
 
@@ -1258,7 +1331,16 @@ The following transports currently support tags and metadata:
 * MailChimp
 * Mailgun
 * Postmark
+* Sendgrid
 * Sendinblue
+
+.. versionadded:: 5.4
+
+    The tag and metadata support for Sendgrid was introduced in Symfony 5.4.
+
+The following transports only support tags:
+
+* OhMySMTP
 
 Development & Debugging
 -----------------------
@@ -1300,12 +1382,13 @@ the mailer configuration file (e.g. in the ``dev`` or ``test`` environments):
     .. code-block:: php
 
         // config/packages/mailer.php
-        $container->loadFromExtension('framework', [
+        use Symfony\Config\FrameworkConfig;
+
+        return static function (FrameworkConfig $framework) {
             // ...
-            'mailer' => [
-                'dsn' => 'null://null',
-            ],
-        ]);
+            $framework->mailer()
+                ->dsn('null://null');
+        };
 
 .. note::
 
@@ -1352,14 +1435,15 @@ a specific address, instead of the *real* address:
     .. code-block:: php
 
         // config/packages/mailer.php
-        $container->loadFromExtension('framework', [
+        use Symfony\Config\FrameworkConfig;
+
+        return static function (FrameworkConfig $framework) {
             // ...
-            'mailer' => [
-                'envelope' => [
-                    'recipients' => ['youremail@example.com'],
-                ],
-            ],
-        ]);
+            $framework->mailer()
+                ->envelope()
+                    ->recipients(['youremail@example.com'])
+            ;
+        };
 
 .. _`high availability`: https://en.wikipedia.org/wiki/High_availability
 .. _`load balancing`: https://en.wikipedia.org/wiki/Load_balancing_(computing)

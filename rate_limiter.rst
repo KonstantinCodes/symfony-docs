@@ -3,8 +3,7 @@ Rate Limiter
 
 .. versionadded:: 5.2
 
-    The RateLimiter component was introduced in Symfony 5.2 as an
-    :doc:`experimental feature </contributing/code/experimental>`.
+    The RateLimiter component was introduced in Symfony 5.2.
 
 A "rate limiter" controls how frequently some event (e.g. an HTTP request or a
 login attempt) is allowed to happen. Rate limiting is commonly used as a
@@ -177,21 +176,26 @@ enforce different levels of service (free or paid):
     .. code-block:: php
 
         // config/packages/rate_limiter.php
-        $container->loadFromExtension('framework', [
-            'rate_limiter' => [
-                'anonymous_api' => [
+        use Symfony\Config\FrameworkConfig;
+
+        return static function (FrameworkConfig $framework) {
+            $framework->rateLimiter()
+                ->limiter('anonymous_api')
                     // use 'sliding_window' if you prefer that policy
-                    'policy' => 'fixed_window',
-                    'limit' => 100,
-                    'interval' => '60 minutes',
-                ],
-                'authenticated_api' => [
-                    'policy' => 'token_bucket',
-                    'limit' => 5000,
-                    'rate' => [ 'interval' =>  '15 minutes', 'amount' =>  500 ],
-                ],
-            ],
-        ]);
+                    ->policy('fixed_window')
+                    ->limit(100)
+                    ->interval('60 minutes')
+                ;
+
+            $framework->rateLimiter()
+                ->limiter('authenticated_api')
+                    ->policy('token_bucket')
+                    ->limit(5000)
+                    ->rate()
+                        ->interval('15 minutes')
+                        ->amount(500)
+                ;
+        };
 
 .. note::
 
@@ -409,16 +413,17 @@ Use the ``cache_pool`` option to override the cache used by a specific limiter
     .. code-block:: php
 
         // config/packages/rate_limiter.php
-        $container->loadFromExtension('framework', [
-            'rate_limiter' => [
-                'anonymous_api' => [
+        use Symfony\Config\FrameworkConfig;
+
+        return static function (FrameworkConfig $framework) {
+            $framework->rateLimiter()
+                ->limiter('anonymous_api')
                     // ...
 
                     // use the "cache.anonymous_rate_limiter" cache pool
-                    'cache_pool' => 'cache.anonymous_rate_limiter',
-                ],
-            ],
-        ]);
+                    ->cachePool('cache.anonymous_rate_limiter')
+                ;
+        };
 
 .. note::
 
@@ -436,9 +441,9 @@ simultaneous requests (e.g. three servers of a company hitting your API at the
 same time). Rate limiters use :doc:`locks </lock>` to protect their operations
 against these race conditions.
 
-By default, Symfony uses the global lock configured by ``framework.lock``), but
+By default, Symfony uses the global lock configured by ``framework.lock``, but
 you can use a specific :ref:`named lock <lock-named-locks>` via the
-``lock_factory`` option:
+``lock_factory`` option (or none at all):
 
 .. configuration-block::
 
@@ -452,6 +457,9 @@ you can use a specific :ref:`named lock <lock-named-locks>` via the
 
                     # use the "lock.rate_limiter.factory" for this limiter
                     lock_factory: 'lock.rate_limiter.factory'
+
+                    # or don't use any lock mechanism
+                    lock_factory: null
 
     .. code-block:: xml
 
@@ -475,6 +483,14 @@ you can use a specific :ref:`named lock <lock-named-locks>` via the
                         lock-factory="lock.rate_limiter.factory"
                     />
 
+                    <!-- limiter-factory: or don't use any lock mechanism -->
+                    <framework:limiter name="anonymous_api"
+                        policy="fixed_window"
+                        limit="100"
+                        interval="60 minutes"
+                        lock-factory="null"
+                    />
+
                     <!-- ... -->
                 </framework:rate-limiter>
             </framework:config>
@@ -483,16 +499,24 @@ you can use a specific :ref:`named lock <lock-named-locks>` via the
     .. code-block:: php
 
         // config/packages/rate_limiter.php
-        $container->loadFromExtension('framework', [
-            'rate_limiter' => [
-                'anonymous_api' => [
+        use Symfony\Config\FrameworkConfig;
+
+        return static function (FrameworkConfig $framework) {
+            $framework->rateLimiter()
+                ->limiter('anonymous_api')
                     // ...
 
                     // use the "lock.rate_limiter.factory" for this limiter
-                    'lock_factory' => 'lock.rate_limiter.factory',
-                ],
-            ],
-        ]);
+                    ->lockFactory('lock.rate_limiter.factory')
+
+                    // or don't use any lock mechanism
+                    ->lockFactory(null)
+                ;
+        };
+
+.. versionadded:: 5.3
+
+    The login throttling doesn't use any lock since Symfony 5.3 to avoid extra load.
 
 .. _`DoS attacks`: https://cheatsheetseries.owasp.org/cheatsheets/Denial_of_Service_Cheat_Sheet.html
 .. _`Apache mod_ratelimit`: https://httpd.apache.org/docs/current/mod/mod_ratelimit.html

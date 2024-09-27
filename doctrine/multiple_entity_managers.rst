@@ -232,24 +232,27 @@ the default entity manager (i.e. ``default``) is returned::
 
     // ...
     use Doctrine\ORM\EntityManagerInterface;
+    use Doctrine\Persistence\ManagerRegistry;
 
     class UserController extends AbstractController
     {
-        public function index(EntityManagerInterface $entityManager): Response
+        public function index(ManagerRegistry $doctrine): Response
         {
-            // These methods also return the default entity manager, but it's preferred
-            // to get it by injecting EntityManagerInterface in the action method
-            $entityManager = $this->getDoctrine()->getManager();
-            $entityManager = $this->getDoctrine()->getManager('default');
-            $entityManager = $this->get('doctrine.orm.default_entity_manager');
+            // Both methods return the default entity manager
+            $entityManager = $doctrine->getManager();
+            $entityManager = $doctrine->getManager('default');
 
-            // Both of these return the "customer" entity manager
-            $customerEntityManager = $this->getDoctrine()->getManager('customer');
-            $customerEntityManager = $this->get('doctrine.orm.customer_entity_manager');
+            // This method returns instead the "customer" entity manager
+            $customerEntityManager = $doctrine->getManager('customer');
 
             // ...
         }
     }
+
+Entity managers also benefit from :ref:`autowiring aliases <service-autowiring-alias>`
+when the :ref:`framework bundle <framework-bundle-configuration>` is used. For
+example, to inject the ``customer`` entity manager, type-hint your method with
+``EntityManagerInterface $customerEntityManager``.
 
 You can now use Doctrine like you did before - using the ``default`` entity
 manager to persist and fetch entities that it manages and the ``customer``
@@ -262,29 +265,21 @@ The same applies to repository calls::
 
     use AcmeStoreBundle\Entity\Customer;
     use AcmeStoreBundle\Entity\Product;
+    use Doctrine\Persistence\ManagerRegistry;
     // ...
 
     class UserController extends AbstractController
     {
-        public function index(): Response
+        public function index(ManagerRegistry $doctrine): Response
         {
-            // Retrieves a repository managed by the "default" em
-            $products = $this->getDoctrine()
-                ->getRepository(Product::class)
-                ->findAll()
-            ;
+            // Retrieves a repository managed by the "default" entity manager
+            $products = $doctrine->getRepository(Product::class)->findAll();
 
-            // Explicit way to deal with the "default" em
-            $products = $this->getDoctrine()
-                ->getRepository(Product::class, 'default')
-                ->findAll()
-            ;
+            // Explicit way to deal with the "default" entity manager
+            $products = $doctrine->getRepository(Product::class, 'default')->findAll();
 
-            // Retrieves a repository managed by the "customer" em
-            $customers = $this->getDoctrine()
-                ->getRepository(Customer::class, 'customer')
-                ->findAll()
-            ;
+            // Retrieves a repository managed by the "customer" entity manager
+            $customers = $doctrine->getRepository(Customer::class, 'customer')->findAll();
 
             // ...
         }

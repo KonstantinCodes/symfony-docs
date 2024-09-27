@@ -51,9 +51,13 @@ for more information):
     .. code-block:: php
 
         // config/packages/framework.php
-        $container->loadFromExtension('framework', [
-            'csrf_protection' => null,
-        ]);
+        use Symfony\Config\FrameworkConfig;
+
+        return static function (FrameworkConfig $framework) {
+            $framework->csrfProtection()
+                ->enabled(true)
+            ;
+        };
 
 The tokens used for CSRF protection are meant to be different for every user and
 they are stored in the session. That's why a session is started automatically as
@@ -146,8 +150,8 @@ generate a CSRF token in the template and store it as a hidden form field:
     </form>
 
 Then, get the value of the CSRF token in the controller action and use the
-:method:`Symfony\\Bundle\\FrameworkBundle\\Controller\\AbstractController::isCsrfTokenValid`
-to check its validity::
+:method:`Symfony\\Bundle\\FrameworkBundle\\Controller\\ControllerTrait::isCsrfTokenValid`
+method to check its validity::
 
     use Symfony\Component\HttpFoundation\Request;
     use Symfony\Component\HttpFoundation\Response;

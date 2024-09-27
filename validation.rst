@@ -11,6 +11,10 @@ into a database or passed to a web service.
 Symfony provides a `Validator`_ component to handle this for you. This
 component is based on the `JSR303 Bean Validation specification`_.
 
+.. index::
+   pair: Validation; Installation
+   pair: Validation; Configuration
+
 Installation
 ------------
 
@@ -20,6 +24,12 @@ install the validator before using it:
 .. code-block:: terminal
 
     $ composer require symfony/validator doctrine/annotations
+
+.. note::
+
+    If your application doesn't use Symfony Flex, you might need to do some
+    manual configuration to enable validation. Check out the
+    :ref:`Validation configuration reference <reference-validation>`.
 
 .. index::
    single: Validation; The basics
@@ -47,7 +57,7 @@ order to be valid. These rules are usually defined using PHP code or
 annotations but they can also be defined as ``.yaml`` or ``.xml`` files inside
 the ``config/validator/`` directory:
 
-For example, to guarantee that the ``$name`` property is not empty, add the
+For example, to indicate that the ``$name`` property must not be empty, add the
 following:
 
 .. configuration-block::
@@ -123,6 +133,11 @@ following:
                 $metadata->addPropertyConstraint('name', new NotBlank());
             }
         }
+
+Adding this configuration by itself does not yet guarantee that the value will
+not be blank; you can still set it to a blank value if you want.
+To actually guarantee that the value adheres to the constraint, the object must
+be passed to the validator service to be checked.
 
 .. tip::
 
@@ -216,88 +231,29 @@ Inside the template, you can output the list of errors exactly as needed:
     a :class:`Symfony\\Component\\Validator\\ConstraintViolation` object.
 
 .. index::
-   pair: Validation; Configuration
+   single: Validation; Callables
 
-Configuration
--------------
+Validation Callables
+~~~~~~~~~~~~~~~~~~~~
 
-Before using the Symfony validator, make sure it's enabled in the main config
-file:
+The ``Validation`` also allows you to create a closure to validate values
+against a set of constraints (useful for example when
+:ref:`validating Console command answers <console-validate-question-answer>` or
+when :ref:`validating OptionsResolver values <optionsresolver-validate-value>`):
 
-.. configuration-block::
+:method:`Symfony\\Component\\Validator\\Validation::createCallable`
+    This returns a closure that throws ``ValidationFailedException`` when the
+    constraints aren't matched.
+:method:`Symfony\\Component\\Validator\\Validation::createIsValidCallable`
+    This returns a closure that returns ``false`` when the constraints aren't matched.
 
-    .. code-block:: yaml
+.. versionadded:: 5.1
 
-        # config/packages/framework.yaml
-        framework:
-            validation: { enabled: true }
+    ``Validation::createCallable()`` was introduced in Symfony 5.1.
 
-    .. code-block:: xml
+.. versionadded:: 5.3
 
-        <!-- config/packages/framework.xml -->
-        <?xml version="1.0" encoding="UTF-8" ?>
-        <container xmlns="http://symfony.com/schema/dic/services"
-            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-            xmlns:framework="http://symfony.com/schema/dic/symfony"
-            xsi:schemaLocation="http://symfony.com/schema/dic/services
-                https://symfony.com/schema/dic/services/services-1.0.xsd
-                http://symfony.com/schema/dic/symfony https://symfony.com/schema/dic/symfony/symfony-1.0.xsd">
-
-            <framework:config>
-                <framework:validation enabled="true"/>
-            </framework:config>
-        </container>
-
-    .. code-block:: php
-
-        // config/packages/framework.php
-        $container->loadFromExtension('framework', [
-            'validation' => [
-                'enabled' => true,
-            ],
-        ]);
-
-Besides, if you plan to use annotations to configure validation, replace the
-previous configuration by the following:
-
-.. configuration-block::
-
-    .. code-block:: yaml
-
-        # config/packages/framework.yaml
-        framework:
-            validation: { enable_annotations: true }
-
-    .. code-block:: xml
-
-        <!-- config/packages/framework.xml -->
-        <?xml version="1.0" encoding="UTF-8" ?>
-        <container xmlns="http://symfony.com/schema/dic/services"
-            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-            xmlns:framework="http://symfony.com/schema/dic/symfony"
-            xsi:schemaLocation="http://symfony.com/schema/dic/services
-                https://symfony.com/schema/dic/services/services-1.0.xsd
-                http://symfony.com/schema/dic/symfony https://symfony.com/schema/dic/symfony/symfony-1.0.xsd">
-
-            <framework:config>
-                <framework:validation enable-annotations="true"/>
-            </framework:config>
-        </container>
-
-    .. code-block:: php
-
-        // config/packages/framework.php
-        $container->loadFromExtension('framework', [
-            'validation' => [
-                'enable_annotations' => true,
-            ],
-        ]);
-
-.. tip::
-
-    When using PHP, YAML, and XML files instead of annotations, Symfony looks
-    for by default in the ``config/validator/`` directory, but you can configure
-    other directories with the :ref:`validation.mapping.paths <reference-validation-mapping>` option.
+    ``Validation::createIsValidCallable()`` was introduced in Symfony 5.3.
 
 .. index::
    single: Validation; Constraints

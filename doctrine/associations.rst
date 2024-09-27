@@ -171,6 +171,32 @@ the ``Product`` entity (and getter & setter methods):
             }
         }
 
+    .. code-block:: php-attributes
+
+        // src/Entity/Product.php
+        namespace App\Entity;
+
+        // ...
+        class Product
+        {
+            // ...
+
+            #[ORM\ManyToOne(targetEntity: Category::class, inversedBy: "products")]
+            private $category;
+
+            public function getCategory(): ?Category
+            {
+                return $this->category;
+            }
+
+            public function setCategory(?Category $category): self
+            {
+                $this->category = $category;
+
+                return $this;
+            }
+        }
+
     .. code-block:: yaml
 
         # src/Resources/config/doctrine/Product.orm.yml
@@ -230,6 +256,38 @@ class that will hold these objects:
             /**
              * @ORM\OneToMany(targetEntity="App\Entity\Product", mappedBy="category")
              */
+            private $products;
+
+            public function __construct()
+            {
+                $this->products = new ArrayCollection();
+            }
+
+            /**
+             * @return Collection|Product[]
+             */
+            public function getProducts(): Collection
+            {
+                return $this->products;
+            }
+
+            // addProduct() and removeProduct() were also added
+        }
+
+    .. code-block:: php-attributes
+
+        // src/Entity/Category.php
+        namespace App\Entity;
+
+        // ...
+        use Doctrine\Common\Collections\ArrayCollection;
+        use Doctrine\Common\Collections\Collection;
+
+        class Category
+        {
+            // ...
+
+            #[ORM\OneToMany(targetEntity: Product::class, mappedBy: "category")]
             private $products;
 
             public function __construct()
@@ -320,6 +378,7 @@ Now you can see this new code in action! Imagine you're inside a controller::
     // ...
     use App\Entity\Category;
     use App\Entity\Product;
+    use Doctrine\Persistence\ManagerRegistry;
     use Symfony\Component\HttpFoundation\Response;
 
     class ProductController extends AbstractController
@@ -327,7 +386,7 @@ Now you can see this new code in action! Imagine you're inside a controller::
         /**
          * @Route("/product", name="product")
          */
-        public function index(): Response
+        public function index(ManagerRegistry $doctrine): Response
         {
             $category = new Category();
             $category->setName('Computer Peripherals');
@@ -340,7 +399,7 @@ Now you can see this new code in action! Imagine you're inside a controller::
             // relates this product to the category
             $product->setCategory($category);
 
-            $entityManager = $this->getDoctrine()->getManager();
+            $entityManager = $doctrine->getManager();
             $entityManager->persist($category);
             $entityManager->persist($product);
             $entityManager->flush();
@@ -386,12 +445,9 @@ before. First, fetch a ``$product`` object and then access its related
 
     class ProductController extends AbstractController
     {
-        public function show(int $id): Response
+        public function show(ManagerRegistry $doctrine, int $id): Response
         {
-            $product = $this->getDoctrine()
-                ->getRepository(Product::class)
-                ->find($id);
-
+            $product = $doctrine->getRepository(Product::class)->find($id);
             // ...
 
             $categoryName = $product->getCategory()->getName();
@@ -422,11 +478,9 @@ direction::
     // ...
     class ProductController extends AbstractController
     {
-        public function showProducts(int $id): Response
+        public function showProducts(ManagerRegistry $doctrine, int $id): Response
         {
-            $category = $this->getDoctrine()
-                ->getRepository(Category::class)
-                ->find($id);
+            $category = $doctrine->getRepository(Category::class)->find($id);
 
             $products = $category->getProducts();
 
@@ -445,9 +499,7 @@ by adding JOINs.
     a "proxy" object in place of the true object. Look again at the above
     example::
 
-        $product = $this->getDoctrine()
-            ->getRepository(Product::class)
-            ->find($id);
+        $product = $doctrine->getRepository(Product::class)->find($id);
 
         $category = $product->getCategory();
 
@@ -517,11 +569,9 @@ object and its related ``Category`` in one query::
     // ...
     class ProductController extends AbstractController
     {
-        public function show(int $id): Response
+        public function show(ManagerRegistry $doctrine, int $id): Response
         {
-            $product = $this->getDoctrine()
-                ->getRepository(Product::class)
-                ->findOneByIdJoinedToCategory($id);
+            $product = $doctrine->getRepository(Product::class)->findOneByIdJoinedToCategory($id);
 
             $category = $product->getCategory();
 
@@ -597,16 +647,30 @@ on that ``Product`` will be set to ``null`` in the database.
 
 But, instead of setting the ``category_id`` to null, what if you want the ``Product``
 to be *deleted* if it becomes "orphaned" (i.e. without a ``Category``)? To choose
-that behavior, use the `orphanRemoval`_ option inside ``Category``::
+that behavior, use the `orphanRemoval`_ option inside ``Category``:
 
-    // src/Entity/Category.php
+.. configuration-block::
 
-    // ...
+    .. code-block:: php-annotations
 
-    /**
-     * @ORM\OneToMany(targetEntity="App\Entity\Product", mappedBy="category", orphanRemoval=true)
-     */
-    private $products;
+        // src/Entity/Category.php
+
+        // ...
+
+        /**
+         * @ORM\OneToMany(targetEntity="App\Entity\Product", mappedBy="category", orphanRemoval=true)
+         */
+        private $products;
+
+    .. code-block:: php-attributes
+
+        // src/Entity/Category.php
+
+        // ...
+
+        #[ORM\OneToMany(targetEntity: Product::class, mappedBy: "category", orphanRemoval=true)]
+        private $products;
+
 
 Thanks to this, if the ``Product`` is removed from the ``Category``, it will be
 removed from the database entirely.

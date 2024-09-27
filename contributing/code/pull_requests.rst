@@ -1,6 +1,12 @@
 Proposing a Change
 ==================
 
+.. admonition:: Screencast
+    :class: screencast
+
+    Do you prefer video tutorials? Check out the `Contributing Back To Symfony`_
+    screencast series.
+
 A pull request, "PR" for short, is the best way to provide a bug fix or to
 propose enhancements to Symfony.
 
@@ -100,12 +106,6 @@ Check that the current Tests Pass
 
 Now that Symfony is installed, check that all unit tests pass for your
 environment as explained in the dedicated :doc:`document <tests>`.
-
-.. tip::
-
-    If tests are failing, check on `Travis-CI`_ if the same test is
-    failing there as well. In that case you do not need to be concerned
-    about the test failing locally.
 
 .. _step-2-work-on-your-patch:
 
@@ -246,7 +246,7 @@ in mind the following:
     as defined in `PSR-1`_ and `PSR-2`_.
 
     A status is posted below the pull request description with a summary
-    of any problems it detects or any `Travis-CI`_ build failures.
+    of any problems it detects or any GitHub Actions build failures.
 
 .. _prepare-your-patch-for-submission:
 
@@ -429,6 +429,68 @@ After the `Psalm phar is installed`_, the analysis can be run locally with:
 
     $ psalm.phar src/Symfony/Component/Workflow
 
+Automated Tests
+~~~~~~~~~~~~~~~
+
+A series of automated tests will run when submitting the pull request.
+These test the code under different conditions, to be sure nothing
+important is broken. Test failures can be unrelated to your changes. If you
+think this is the case, you can check if the target branch has the same
+errors and leave a comment on your PR.
+
+Otherwise, the test failure might be caused by your changes. The following
+test scenarios run on each change:
+
+``PHPUnit / Tests``
+    This job runs on Ubuntu using multiple PHP versions (each in their
+    own job). These jobs run the testsuite just like you would do locally.
+
+    A failure in these jobs often indicates a bug in the code.
+
+``PHPUnit / Tests (high-deps)``
+    This job checks each package (bridge, bundle or component) in ``src/``
+    individually by calling ``composer update`` and ``phpunit`` from inside
+    each package.
+
+    A failure in this job often indicates a missing package in the
+    ``composer.json`` of the failing package (e.g.
+    ``src/Symfony/Bundle/FrameworkBundle/composer.json``).
+
+    This job also runs relevant packages using a "flipped" test (indicated
+    by a ``^`` suffix in the package name). These tests checkout the
+    previous major release (e.g. ``4.4`` for a pull requests on ``5.4``)
+    and run the tests with your branch as dependency.
+
+    A failure in these flipped tests indicate a backwards compatibility
+    break in your changes.
+
+``PHPUnit / Tests (low-deps)``
+    This job also checks each package individually, but then uses
+    ``composer update --prefer-lowest`` before running the tests.
+
+    A failure in this job often indicates a wrong version range or a
+    missing package in the ``composer.json`` of the failing package.
+
+``continuous-integration/appveyor/pr``
+    This job runs on Windows using the x86 architecture and the lowest
+    supported PHP version. All tests first run without extra PHP
+    extensions. Then, all skipped tests are run using all required PHP
+    extensions.
+
+    A failure in this job often indicate that your changes do not support
+    Windows, x86 or PHP with minimal extensions.
+
+``Integration / Tests``
+    Integration tests require other services (e.g. Redis or RabbitMQ) to
+    run. This job only runs the tests in the ``integration`` PHPUnit group.
+
+    A failure in this job indicates a bug in the communication with these
+    services.
+
+``PHPUnit / Tests (experimental)``
+    This job always passes (even with failing tests) and is used by the
+    core team to prepare for the upcoming PHP versions.
+
 .. _rework-your-patch:
 
 Rework your Pull Request
@@ -465,5 +527,5 @@ before merging.
 .. _`PSR-2`: https://www.php-fig.org/psr/psr-2/
 .. _`searching on GitHub`: https://github.com/symfony/symfony/issues?q=+is%3Aopen+
 .. _`Symfony Slack`: https://symfony.com/slack-invite
-.. _`Travis-CI`: https://travis-ci.org/symfony/symfony
 .. _`Psalm phar is installed`: https://psalm.dev/docs/running_psalm/installation/
+.. _`Contributing Back To Symfony`: https://symfonycasts.com/screencast/contributing

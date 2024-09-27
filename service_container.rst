@@ -33,6 +33,7 @@ service's class or interface name. Want to :doc:`log </logging>` something? No p
 
     use Psr\Log\LoggerInterface;
     use Symfony\Component\HttpFoundation\Response;
+    use Symfony\Component\Routing\Annotation\Route;
 
     class ProductController
     {
@@ -119,6 +120,7 @@ inside your controller::
     // src/Controller/ProductController.php
     use App\Service\MessageGenerator;
     use Symfony\Component\HttpFoundation\Response;
+    use Symfony\Component\Routing\Annotation\Route;
 
     /**
      * @Route("/products/new")
@@ -397,7 +399,7 @@ example, suppose you want to make the admin email configurable:
 
 If you make this change and refresh, you'll see an error:
 
-    Cannot autowire service "App\Service\SiteUpdateManager": argument "$adminEmail"
+    Cannot autowire service "App\\Service\\SiteUpdateManager": argument "$adminEmail"
     of method "__construct()" must have a type-hint or be given a value explicitly.
 
 That makes sense! There is no way that the container knows what value you want to
@@ -640,7 +642,7 @@ But, you can control this and pass in a different logger:
             // ... same code as before
 
             // explicitly configure the service
-            $services->set(SiteUpdateManager::class)
+            $services->set(MessageGenerator::class)
                 ->arg('$logger', service('monolog.logger.request'))
             ;
         };

@@ -174,6 +174,8 @@ when this happens, set the ``AbstractNormalizer::ALLOW_EXTRA_ATTRIBUTES`` contex
 ``false`` and provide an object that implements ``ClassMetadataFactoryInterface``
 when constructing the normalizer::
 
+    use App\Model\Person;
+
     $data = <<<EOF
     <person>
         <name>foo</name>
@@ -189,7 +191,7 @@ when constructing the normalizer::
 
     // this will throw a Symfony\Component\Serializer\Exception\ExtraAttributesException
     // because "city" is not an attribute of the Person class
-    $person = $serializer->deserialize($data, 'App\Model\Person', 'xml', [
+    $person = $serializer->deserialize($data, Person::class, 'xml', [
         AbstractNormalizer::ALLOW_EXTRA_ATTRIBUTES => false,
     ]);
 
@@ -1078,22 +1080,58 @@ These are the options available:
 ==============================  =================================================  ==========================
 Option                          Description                                        Default
 ==============================  =================================================  ==========================
-``xml_format_output``           If set to true, formats the generated XML with
-                                line breaks and indentation.
+``xml_format_output``           If set to true, formats the generated XML with     ``false``
+                                line breaks and indentation
 ``xml_version``                 Sets the XML version attribute                     ``1.1``
 ``xml_encoding``                Sets the XML encoding attribute                    ``utf-8``
 ``xml_standalone``              Adds standalone attribute in the generated XML     ``true``
 ``xml_type_cast_attributes``    This provides the ability to forgot the attribute  ``true``
                                 type casting
-``xml_root_node_name``          Sets the root node name (default: ``response``).
-``as_collection``               Always returns results as a collection, even if
+``xml_root_node_name``          Sets the root node name                            ``response``
+``as_collection``               Always returns results as a collection, even if    ``false``
                                 only one line is decoded
-``decoder_ignored_node_types``  Sets nodes to be ignored in the decode             ``[\XML_PI_NODE, \XML_COMMENT_NODE]``
-``encoder_ignored_node_types``  Sets nodes to be ignored in the encode             ``[]``
+``decoder_ignored_node_types``  Array of node types (`DOM XML_* constants`_)       ``[\XML_PI_NODE, \XML_COMMENT_NODE]``
+                                to be ignored while decoding
+``encoder_ignored_node_types``  Array of node types (`DOM XML_* constants`_)       ``[]``
+                                to be ignored while encoding
 ``load_options``                XML loading `options with libxml`_                 ``\LIBXML_NONET | \LIBXML_NOBLANKS``
 ``remove_empty_tags``           If set to true, removes all empty tags in the      ``false``
                                 generated XML
 ==============================  =================================================  ==========================
+
+Example with custom ``context``::
+
+    use Symfony\Component\Serializer\Encoder\XmlEncoder;
+
+    // create encoder with specified options as new default settings
+    $xmlEncoder = new XmlEncoder(['xml_format_output' => true]);
+
+    $data = [
+        'id' => 'IDHNQIItNyQ',
+        'date' => '2019-10-24',
+    ];
+
+    // encode with default context
+    $xmlEncoder->encode($data, 'xml');
+    // outputs:
+    // <?xml version="1.0"?>
+    // <response>
+    //   <id>IDHNQIItNyQ</id>
+    //   <date>2019-10-24</date>
+    // </response>
+
+    // encode with modified context
+    $xmlEncoder->encode($data, 'xml', [
+        'xml_root_node_name' => 'track',
+        'encoder_ignored_node_types' => [
+            \XML_PI_NODE, // removes XML declaration (the leading xml tag)
+        ],
+    ]);
+    // outputs:
+    // <track>
+    //   <id>IDHNQIItNyQ</id>
+    //   <date>2019-10-24</date>
+    // </track>
 
 The ``YamlEncoder``
 ~~~~~~~~~~~~~~~~~~~
@@ -1601,7 +1639,7 @@ and ``BitBucketCodeRepository`` classes:
          *    "bitbucket"="App\BitBucketCodeRepository"
          * })
          */
-        interface CodeRepository
+        abstract class CodeRepository
         {
             // ...
         }
@@ -1618,7 +1656,7 @@ and ``BitBucketCodeRepository`` classes:
             'github' => GitHubCodeRepository::class,
             'bitbucket' => BitBucketCodeRepository::class,
         ])]
-        interface CodeRepository
+        abstract class CodeRepository
         {
             // ...
         }
@@ -1680,6 +1718,7 @@ Learn more
 .. _`JMS serializer`: https://github.com/schmittjoh/serializer
 .. _RFC3339: https://tools.ietf.org/html/rfc3339#section-5.8
 .. _`options with libxml`: https://www.php.net/manual/en/libxml.constants.php
+.. _`DOM XML_* constants`: https://www.php.net/manual/en/dom.constants.php
 .. _JSON: http://www.json.org/
 .. _XML: https://www.w3.org/XML/
 .. _YAML: https://yaml.org/

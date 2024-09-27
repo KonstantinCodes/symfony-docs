@@ -80,17 +80,36 @@ You can optionally define a description, help message and the
 :doc:`input options and arguments </console/input>`::
 
     // ...
+    // the command description shown when running "php bin/console list"
+    protected static $defaultDescription = 'Creates a new user.';
+
+    // ...
     protected function configure(): void
     {
         $this
-            // the short description shown while running "php bin/console list"
-            ->setDescription('Creates a new user.')
+            // If you don't like using the $defaultDescription static property,
+            // you can also define the short description using this method:
+            // ->setDescription('...')
 
-            // the full command description shown when running the command with
-            // the "--help" option
+            // the command help shown when running the command with the "--help" option
             ->setHelp('This command allows you to create a user...')
         ;
     }
+
+Defining the ``$defaultDescription`` static property instead of using the
+``setDescription()`` method allows to get the command description without
+instantiating its class. This makes the ``php bin/console list`` command run
+much faster.
+
+If you want to always run the ``list`` command fast, add the ``--short`` option
+to it (``php bin/console list --short``). This will avoid instantiating command
+classes, but it won't show any description for commands that use the
+``setDescription()`` method instead of the static property.
+
+.. versionadded:: 5.3
+
+    The ``$defaultDescription`` static property and the ``--short`` option
+    were introduced in Symfony 5.3.
 
 The ``configure()`` method is called automatically at the end of the command
 constructor. If your command defines its own constructor, set the properties
@@ -384,6 +403,8 @@ console::
                 // e.g: '--some-option' => 'option_value',
             ]);
 
+            $commandTester->assertCommandIsSuccessful();
+
             // the output of the command in the console
             $output = $commandTester->getDisplay();
             $this->assertStringContainsString('Username: Wouter', $output);
@@ -399,6 +420,10 @@ call ``setAutoExit(false)`` on it to get the command result in ``CommandTester``
 
     The ``setAutoExit()`` method for single-command applications was introduced
     in Symfony 5.2.
+
+.. versionadded:: 5.4
+
+    The ``assertCommandIsSuccessful()`` method was introduced in Symfony 5.4.
 
 .. tip::
 
@@ -454,5 +479,6 @@ tools capable of helping you with different tasks:
 * :doc:`/components/console/helpers/table`: displays tabular data as a table
 * :doc:`/components/console/helpers/debug_formatter`: provides functions to
   output debug information when running an external program
+* :doc:`/components/console/helpers/cursor`: allows to manipulate the cursor in the terminal
 
 .. _`exit status`: https://en.wikipedia.org/wiki/Exit_status

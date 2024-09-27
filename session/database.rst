@@ -5,7 +5,7 @@ Store Sessions in a Database
 ============================
 
 Symfony stores sessions in files by default. If your application is served by
-multiple servers, you'll need to use instead a database to make sessions work
+multiple servers, you'll need to use a database instead to make sessions work
 across different servers.
 
 Symfony can store sessions in all kinds of databases (relational, NoSQL and
@@ -63,8 +63,6 @@ First, define a Symfony service for the connection to the Redis server:
 
     .. code-block:: php
 
-        use Symfony\Component\DependencyInjection\Reference;
-
         // ...
         $container
             // you can also use \RedisArray, \RedisCluster or \Predis\Client classes
@@ -92,7 +90,7 @@ and ``RedisProxy``:
                     # you can optionally pass an array of options. The only options are 'prefix' and 'ttl',
                     # which define the prefix to use for the keys to avoid collision on the Redis server
                     # and the expiration time for any given entry (in seconds), defaults are 'sf_s' and null:
-                    # - { 'prefix' => 'my_prefix', 'ttl' => 600 }
+                    # - { 'prefix': 'my_prefix', 'ttl': 600 }
 
     .. code-block:: xml
 
@@ -105,6 +103,7 @@ and ``RedisProxy``:
                      and the expiration time for any given entry (in seconds), defaults are 'sf_s' and null:
                 <argument type="collection">
                     <argument key="prefix">my_prefix</argument>
+                    <argument key="ttl">600</argument>
                 </argument> -->
             </service>
         </services>
@@ -112,6 +111,7 @@ and ``RedisProxy``:
     .. code-block:: php
 
         // config/services.php
+        use Symfony\Component\DependencyInjection\Reference;
         use Symfony\Component\HttpFoundation\Session\Storage\Handler\RedisSessionHandler;
 
         $container
@@ -149,14 +149,14 @@ configuration option to tell Symfony to use this service as the session handler:
 
         // config/packages/framework.php
         use Symfony\Component\HttpFoundation\Session\Storage\Handler\RedisSessionHandler;
+        use Symfony\Config\FrameworkConfig;
 
-        // ...
-        $container->loadFromExtension('framework', [
+        return static function (FrameworkConfig $framework) {
             // ...
-            'session' => [
-                'handler_id' => RedisSessionHandler::class,
-            ],
-        ]);
+            $framework->session()
+                ->handlerId(RedisSessionHandler::class)
+            ;
+        };
 
 That's all! Symfony will now use your Redis server to read and write the session
 data. The main drawback of this solution is that Redis does not perform session
@@ -208,7 +208,7 @@ first register a new handler service with your database credentials:
                     <argument>%env(DATABASE_URL)%</argument>
 
                     <!-- you can also use PDO configuration, but requires passing two arguments: -->
-                    <!-- <argument>mysql:dbname=mydatabase, host=myhost</argument>
+                    <!-- <argument>mysql:dbname=mydatabase; host=myhost; port=myport</argument>
                         <argument type="collection">
                             <argument key="db_username">myuser</argument>
                             <argument key="db_password">mypassword</argument>
@@ -273,14 +273,14 @@ configuration option to tell Symfony to use this service as the session handler:
 
         // config/packages/framework.php
         use Symfony\Component\HttpFoundation\Session\Storage\Handler\PdoSessionHandler;
+        use Symfony\Config\FrameworkConfig;
 
-        // ...
-        $container->loadFromExtension('framework', [
+        return static function (FrameworkConfig $framework) {
             // ...
-            'session' => [
-                'handler_id' => PdoSessionHandler::class,
-            ],
-        ]);
+            $framework->session()
+                ->handlerId(PdoSessionHandler::class)
+            ;
+        };
 
 Configuring the Session Table and Column Names
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -414,7 +414,8 @@ MariaDB/MySQL
         `sess_id` VARBINARY(128) NOT NULL PRIMARY KEY,
         `sess_data` BLOB NOT NULL,
         `sess_lifetime` INTEGER UNSIGNED NOT NULL,
-        `sess_time` INTEGER UNSIGNED NOT NULL
+        `sess_time` INTEGER UNSIGNED NOT NULL,
+        INDEX `sessions_sess_lifetime_idx` (`sess_lifetime`)
     ) COLLATE utf8mb4_bin, ENGINE = InnoDB;
 
 .. note::
@@ -435,6 +436,7 @@ PostgreSQL
         sess_lifetime INTEGER NOT NULL,
         sess_time INTEGER NOT NULL
     );
+    CREATE INDEX sessions_sess_lifetime_idx ON sessions (sess_lifetime);
 
 Microsoft SQL Server
 ....................
@@ -445,7 +447,8 @@ Microsoft SQL Server
         sess_id VARCHAR(128) NOT NULL PRIMARY KEY,
         sess_data NVARCHAR(MAX) NOT NULL,
         sess_lifetime INTEGER NOT NULL,
-        sess_time INTEGER NOT NULL
+        sess_time INTEGER NOT NULL,
+        INDEX sessions_sess_lifetime_idx (sess_lifetime)
     );
 
 Store Sessions in a NoSQL Database (MongoDB)
@@ -494,7 +497,7 @@ the MongoDB connection as argument:
         // config/services.php
         namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
-        use Symfony\Component\HttpFoundation\Session\Storage\Handler\PdoSessionHandler;
+        use Symfony\Component\HttpFoundation\Session\Storage\Handler\MongoDbSessionHandler;
 
         return static function (ContainerConfigurator $container) {
             $services = $configurator->services();
@@ -532,14 +535,14 @@ configuration option to tell Symfony to use this service as the session handler:
 
         // config/packages/framework.php
         use Symfony\Component\HttpFoundation\Session\Storage\Handler\MongoDbSessionHandler;
+        use Symfony\Config\FrameworkConfig;
 
-        // ...
-        $container->loadFromExtension('framework', [
+        return static function (FrameworkConfig $framework) {
             // ...
-            'session' => [
-                'handler_id' => MongoDbSessionHandler::class,
-            ],
-        ]);
+            $framework->session()
+                ->handlerId(MongoDbSessionHandler::class)
+            ;
+        };
 
 .. note::
 
@@ -556,7 +559,7 @@ performance. Run this from the `MongoDB shell`_:
 .. code-block:: javascript
 
     use session_db
-    db.session.ensureIndex( { "expires_at": 1 }, { expireAfterSeconds: 0 } )
+    db.session.createIndex( { "expires_at": 1 }, { expireAfterSeconds: 0 } )
 
 Configuring the Session Field Names
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -603,7 +606,7 @@ configure these values with the second argument passed to the
         // config/services.php
         namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
-        use Symfony\Component\HttpFoundation\Session\Storage\Handler\PdoSessionHandler;
+        use Symfony\Component\HttpFoundation\Session\Storage\Handler\MongoDbSessionHandler;
 
         return static function (ContainerConfigurator $container) {
             $services = $configurator->services();

@@ -20,6 +20,10 @@ Before creating your first Symfony application you must:
 * Install PHP 7.2.5 or higher and these PHP extensions (which are installed and
   enabled by default in most PHP 7 installations): `Ctype`_, `iconv`_, `JSON`_,
   `PCRE`_, `Session`_, `SimpleXML`_, and `Tokenizer`_;
+
+  * Note that all newer, released versions of PHP will be supported during the
+    lifetime of each Symfony release (including new major versions).
+    For example, PHP 8.0 is supported.
 * `Install Composer`_, which is used to install PHP packages.
 
 Optionally, you can also `install Symfony CLI`_. This creates a binary called
@@ -65,10 +69,10 @@ Symfony application using Composer:
 .. code-block:: terminal
 
     # run this if you are building a traditional web application
-    $ composer create-project symfony/website-skeleton:"5.3.x@dev" my_project_name
+    $ composer create-project symfony/website-skeleton:"5.4.x@dev" my_project_name
 
     # run this if you are building a microservice, console application or API
-    $ composer create-project symfony/skeleton:"5.3.x@dev" my_project_name
+    $ composer create-project symfony/skeleton:"5.4.x@dev" my_project_name
 
 No matter which command you run to create the Symfony application. All of them
 will create a new ``my_project_name/`` directory, download some dependencies

@@ -155,13 +155,22 @@ which is the first one defined or the one configured via the
 ``default_connection`` parameter.
 
 Each connection is also accessible via the ``doctrine.dbal.[name]_connection``
-service where ``[name]`` is the name of the connection. In a controller
-extending ``AbstractController``, you can access it directly using the
-``getConnection()`` method and the name of the connection::
+service where ``[name]`` is the name of the connection. In a :doc:`controller </controller>`
+you can access it using the ``getConnection()`` method and the name of the connection::
 
-    $connection = $this->getDoctrine()->getConnection('customer');
+    // src/Controller/SomeController.php
+    use Doctrine\Persistence\ManagerRegistry;
 
-    $result = $connection->fetchAll('SELECT name FROM customer');
+    class SomeController
+    {
+        public function someMethod(ManagerRegistry $doctrine)
+        {
+            $connection = $doctrine->getConnection('customer');
+            $result = $connection->fetchAll('SELECT name FROM customer');
+
+            // ...
+        }
+    }
 
 Doctrine ORM Configuration
 --------------------------
@@ -265,8 +274,11 @@ you can control. The following configuration options exist for a mapping:
 ``type``
 ........
 
-One of ``annotation`` (the default value), ``xml``, ``yml``, ``php`` or
+One of ``annotation`` (for PHP annotations; it's the default value),
+``attribute`` (for PHP attributes), ``xml``, ``yml``, ``php`` or
 ``staticphp``. This specifies which type of metadata type your mapping uses.
+
+See `Doctrine Metadata Drivers`_ for more information about this option.
 
 ``dir``
 .......
@@ -453,3 +465,4 @@ is ``true``, the DoctrineBundle will prefix the ``dir`` configuration with
 the path of the bundle.
 
 .. _DBAL documentation: https://www.doctrine-project.org/projects/doctrine-dbal/en/current/reference/configuration.html
+.. _`Doctrine Metadata Drivers`: https://www.doctrine-project.org/projects/doctrine-orm/en/current/reference/metadata-drivers.html

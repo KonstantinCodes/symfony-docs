@@ -123,19 +123,32 @@ You can configure the global options using the ``default_options`` option:
     .. code-block:: php
 
         // config/packages/framework.php
-        $container->loadFromExtension('framework', [
-            'http_client' => [
-                'default_options' => [
-                    'max_redirects' => 7,
-                ],
-            ],
-        ]);
+        use Symfony\Config\FrameworkConfig;
+
+        return static function (FrameworkConfig $framework) {
+            $framework->httpClient()
+                ->defaultOptions()
+                    ->maxRedirects(7)
+            ;
+        };
 
     .. code-block:: php-standalone
 
         $client = HttpClient::create([
              'max_redirects' => 7,
         ]);
+
+You can also use the :method:`Symfony\\Contracts\\HttpClient\\HttpClientInterface::withOptions`
+method to retrieve a new instance of the client with new default options::
+
+    $this->client = $client->withOptions([
+        'base_uri' => 'https://...',
+        'headers' => ['header-name' => 'header-value']
+    ]);
+
+.. versionadded:: 5.3
+
+    The ``withOptions()`` method was introduced in Symfony 5.3.
 
 Some options are described in this guide:
 
@@ -183,12 +196,14 @@ The HTTP client also has one configuration option called
     .. code-block:: php
 
         // config/packages/framework.php
-        $container->loadFromExtension('framework', [
-            'http_client' => [
-                'max_host_connections' => 10,
+        use Symfony\Config\FrameworkConfig;
+
+        return static function (FrameworkConfig $framework) {
+            $framework->httpClient()
+                ->maxHostConnections(10)
                 // ...
-            ],
-        ]);
+            ;
+        };
 
     .. code-block:: php-standalone
 
@@ -212,7 +227,7 @@ autoconfigure the HTTP client based on the requested URL:
             http_client:
                 scoped_clients:
                     # only requests matching scope will use these options
-                    github:
+                    github.client:
                         scope: 'https://api\.github\.com'
                         headers:
                             Accept: 'application/vnd.github.v3+json'
@@ -221,7 +236,7 @@ autoconfigure the HTTP client based on the requested URL:
 
                     # using base_uri, relative URLs (e.g. request("GET", "/repos/symfony/symfony-docs"))
                     # will default to these options
-                    github:
+                    github.client:
                         base_uri: 'https://api.github.com'
                         headers:
                             Accept: 'application/vnd.github.v3+json'
@@ -242,7 +257,7 @@ autoconfigure the HTTP client based on the requested URL:
             <framework:config>
                 <framework:http-client>
                     <!-- only requests matching scope will use these options -->
-                    <framework:scoped-client name="github"
+                    <framework:scoped-client name="github.client"
                         scope="https://api\.github\.com"
                     >
                         <framework:header name="Accept">application/vnd.github.v3+json</framework:header>
@@ -251,7 +266,7 @@ autoconfigure the HTTP client based on the requested URL:
 
                     <!-- using base-uri, relative URLs (e.g. request("GET", "/repos/symfony/symfony-docs"))
                          will default to these options -->
-                    <framework:scoped-client name="github"
+                    <framework:scoped-client name="github.client"
                         base-uri="https://api.github.com"
                     >
                         <framework:header name="Accept">application/vnd.github.v3+json</framework:header>
@@ -264,32 +279,26 @@ autoconfigure the HTTP client based on the requested URL:
     .. code-block:: php
 
         // config/packages/framework.php
-        $container->loadFromExtension('framework', [
-            'http_client' => [
-                'scoped_clients' => [
-                    // only requests matching scope will use these options
-                    'github' => [
-                        'scope' => 'https://api\.github\.com',
-                        'headers' => [
-                            'Accept' => 'application/vnd.github.v3+json',
-                            'Authorization' => 'token %env(GITHUB_API_TOKEN)%',
-                        ],
-                        // ...
-                    ],
+        use Symfony\Config\FrameworkConfig;
 
-                    // using base_url, relative URLs (e.g. request("GET", "/repos/symfony/symfony-docs"))
-                    // will default to these options
-                    'github' => [
-                        'base_uri' => 'https://api.github.com',
-                        'headers' => [
-                            'Accept' => 'application/vnd.github.v3+json',
-                            'Authorization' => 'token %env(GITHUB_API_TOKEN)%',
-                        ],
-                        // ...
-                    ],
-                ],
-            ],
-        ]);
+        return static function (FrameworkConfig $framework) {
+            // only requests matching scope will use these options
+            $framework->httpClient()->scopedClient('github.client')
+                ->scope('https://api\.github\.com')
+                ->header('Accept', 'application/vnd.github.v3+json')
+                ->header('Authorization', 'token %env(GITHUB_API_TOKEN)%')
+                // ...
+            ;
+
+            // using base_url, relative URLs (e.g. request("GET", "/repos/symfony/symfony-docs"))
+            // will default to these options
+            $framework->httpClient()->scopedClient('github.client')
+                ->baseUri('https://api.github.com')
+                ->header('Accept', 'application/vnd.github.v3+json')
+                ->header('Authorization', 'token %env(GITHUB_API_TOKEN)%')
+                // ...
+            ;
+        };
 
     .. code-block:: php-standalone
 
@@ -326,8 +335,8 @@ Each client has a unique service named after its configuration.
 
 Each scoped client also defines a corresponding named autowiring alias.
 If you use for example
-``Symfony\Contracts\HttpClient\HttpClientInterface $myApiClient``
-as the type and name of an argument, autowiring will inject the ``my_api.client``
+``Symfony\Contracts\HttpClient\HttpClientInterface $githubClient``
+as the type and name of an argument, autowiring will inject the ``github.client``
 service into your autowired classes.
 
 .. note::
@@ -432,24 +441,21 @@ each request (which overrides any global authentication):
     .. code-block:: php
 
         // config/packages/framework.php
-        $container->loadFromExtension('framework', [
-            'http_client' => [
-                'scoped_clients' => [
-                    'example_api' => [
-                        'base_uri' => 'https://example.com/',
+        use Symfony\Config\FrameworkConfig;
 
-                        // HTTP Basic authentication
-                        'auth_basic' => 'the-username:the-password',
+        return static function (FrameworkConfig $framework) {
+            $framework->httpClient()->scopedClient('example_api')
+                ->baseUri('https://example.com/')
+                // HTTP Basic authentication
+                ->authBasic('the-username:the-password')
 
-                        // HTTP Bearer authentication (also called token authentication)
-                        'auth_bearer' => 'the-bearer-token',
+                // HTTP Bearer authentication (also called token authentication)
+                ->authBearer('the-bearer-token')
 
-                        // Microsoft NTLM authentication
-                        'auth_ntlm' => 'the-username:the-password',
-                    ],
-                ],
-            ],
-        ]);
+                // Microsoft NTLM authentication
+                ->authNtlm('the-username:the-password')
+            ;
+        };
 
     .. code-block:: php-standalone
 
@@ -537,15 +543,14 @@ Use the ``headers`` option to define the default headers added to all requests:
     .. code-block:: php
 
         // config/packages/framework.php
-        $container->loadFromExtension('framework', [
-            'http_client' => [
-                'default_options' => [
-                    'headers' => [
-                        'User-Agent' => 'My Fancy App',
-                    ],
-                ],
-            ],
-        ]);
+        use Symfony\Config\FrameworkConfig;
+
+        return static function (FrameworkConfig $framework) {
+            $framework->httpClient()
+                ->defaultOptions()
+                    ->header('User-Agent', 'My Fancy App')
+            ;
+        };
 
     .. code-block:: php-standalone
 
@@ -767,6 +772,18 @@ called when new data is uploaded or downloaded and at least once per second::
 Any exceptions thrown from the callback will be wrapped in an instance of
 ``TransportExceptionInterface`` and will abort the request.
 
+HTTPS Certificates
+~~~~~~~~~~~~~~~~~~
+
+HttpClient uses the system's certificate store to validate SSL certificates
+(while browsers use their own stores). When using self-signed certificates
+during development, it's recommended to create your own certificate authority
+(CA) and add it to your system's store.
+
+Alternatively, you can also disable ``verify_host`` and ``verify_peer`` (see
+:ref:`http_client config reference <reference-http-client>`), but this is not
+recommended in production.
+
 Performance
 -----------
 
@@ -823,9 +840,9 @@ Add an ``extra.curl`` option in your configuration to pass those extra options::
         // ...
         'extra' => [
             'curl' => [
-                CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V6
-            ]
-        ]
+                CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V6,
+            ],
+        ],
     ]);
 
 .. note::
@@ -882,13 +899,14 @@ To force HTTP/2 for ``http`` URLs, you need to enable it explicitly via the
     .. code-block:: php
 
         // config/packages/framework.php
-        $container->loadFromExtension('framework', [
-            'http_client' => [
-                'default_options' => [
-                    'http_version' => '2.0',
-                ],
-            ],
-        ]);
+        use Symfony\Config\FrameworkConfig;
+
+        return static function (FrameworkConfig $framework) {
+            $framework->httpClient()
+                ->defaultOptions()
+                    ->httpVersion('2.0')
+            ;
+        };
 
     .. code-block:: php-standalone
 
@@ -931,6 +949,8 @@ following methods::
 
     // you can get individual info too
     $startTime = $response->getInfo('start_time');
+    // e.g. this returns the final response URL (resolving redirections if needed)
+    $url = $response->getInfo('url');
 
     // returns detailed logs about the requests and responses of the HTTP transaction
     $httpLogs = $response->getInfo('debug');
@@ -1078,6 +1098,13 @@ yet. That's the trick when concurrency is desired: requests should be sent
 first and be read later on. This will allow the client to monitor all pending
 requests while your code waits for a specific one, as done in each iteration of
 the above "foreach" loop.
+
+.. note::
+
+    The maximum number of concurrent requests that you can perform depends on
+    the resources of your machine (e.g. your operating system may limit the
+    number of simultaneous reads of the file that stores the certificates
+    file). Make your requests in batches to avoid these issues.
 
 Multiplexing Responses
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -1253,6 +1280,7 @@ server-sent events. Use the :class:`Symfony\\Component\\HttpClient\\EventSourceH
 to wrap your HTTP client, open a connection to a server that responds with a
 ``text/event-stream`` content type and consume the stream as follows::
 
+    use Symfony\Component\HttpClient\Chunk\ServerSentEvent;
     use Symfony\Component\HttpClient\EventSourceHttpClient;
 
     // the second optional argument is the reconnection time in seconds (default = 10)
@@ -1599,12 +1627,27 @@ has many safety checks that will throw a ``LogicException`` if the chunk
 passthru doesn't behave correctly; e.g. if a chunk is yielded after an ``isLast()``
 one, or if a content chunk is yielded before an ``isFirst()`` one, etc.
 
-Testing HTTP Clients and Responses
-----------------------------------
+Testing
+-------
 
 This component includes the ``MockHttpClient`` and ``MockResponse`` classes to
-use them in tests that need an HTTP client which doesn't make actual HTTP
-requests.
+use in tests that shouldn't make actual HTTP requests. Such tests can be
+useful, as they will run faster and produce consistent results, since they're
+not dependent on an external service. By not making actual HTTP requests there
+is no need to worry about the service being online or the request changing
+state, for example deleting a resource.
+
+``MockHttpClient`` implements the ``HttpClientInterface``, just like any actual
+HTTP client in this component. When you type-hint with ``HttpClientInterface``
+your code will accept the real client outside tests, while replacing it with
+``MockHttpClient`` in the test.
+
+When the ``request`` method is used on ``MockHttpClient``, it will respond with
+the supplied ``MockResponse``. There are a few ways to use it, as described
+below.
+
+HTTP Client and Responses
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The first way of using ``MockHttpClient`` is to pass a list of responses to its
 constructor. These will be yielded in order when requests are made::
@@ -1733,11 +1776,126 @@ Then configure Symfony to use your callback:
     .. code-block:: php
 
         // config/packages/framework.php
-        $container->loadFromExtension('framework', [
-            'http_client' => [
-                'mock_response_factory' => MockClientCallback::class,
-            ],
-        ]);
+        use Symfony\Config\FrameworkConfig;
+
+        return static function (FrameworkConfig $framework) {
+            $framework->httpClient()
+                ->mockResponseFactory(MockClientCallback::class)
+            ;
+        };
+
+Testing Request Data
+~~~~~~~~~~~~~~~~~~~~
+
+The ``MockResponse`` class comes with some helper methods to test the request:
+
+* ``getRequestMethod()`` - returns the HTTP method;
+* ``getRequestUrl()`` - returns the URL the request would be sent to;
+* ``getRequestOptions()`` - returns an array containing other information about
+  the request such as headers, query parameters, body content etc.
+
+Usage example::
+
+    $mockResponse = new MockResponse('', ['http_code' => 204]);
+    $httpClient = new MockHttpClient($mockResponse, 'https://example.com');
+
+    $response = $httpClient->request('DELETE', 'api/article/1337', [
+        'headers' => [
+            'Accept: */*',
+            'Authorization: Basic YWxhZGRpbjpvcGVuc2VzYW1l',
+        ],
+    ]);
+
+    $mockResponse->getRequestMethod();
+    // returns "DELETE"
+
+    $mockResponse->getRequestUrl();
+    // returns "https://example.com/api/article/1337"
+
+    $mockResponse->getRequestOptions()['headers'];
+    // returns ["Accept: */*", "Authorization: Basic YWxhZGRpbjpvcGVuc2VzYW1l"]
+
+Full Example
+~~~~~~~~~~~~
+
+The following standalone example demonstrates a way to use the HTTP client and
+test it in a real application::
+
+    // ExternalArticleService.php
+    use Symfony\Contracts\HttpClient\HttpClientInterface;
+
+    final class ExternalArticleService
+    {
+        private HttpClientInterface $httpClient;
+
+        public function __construct(HttpClientInterface $httpClient)
+        {
+            $this->httpClient = $httpClient;
+        }
+
+        public function createArticle(array $requestData): array
+        {
+            $requestJson = json_encode($requestData, JSON_THROW_ON_ERROR);
+
+            $response = $this->httpClient->request('POST', 'api/article', [
+                'headers' => [
+                    'Content-Type: application/json',
+                    'Accept: application/json',
+                ],
+                'body' => $requestJson,
+            ]);
+
+            if (201 !== $response->getStatusCode()) {
+                throw new Exception('Response status code is different than expected.');
+            }
+
+            // ... other checks
+
+            $responseJson = $response->getContent();
+            $responseData = json_decode($responseJson, true, 512, JSON_THROW_ON_ERROR);
+
+            return $responseData;
+        }
+    }
+
+    // ExternalArticleServiceTest.php
+    use PHPUnit\Framework\TestCase;
+    use Symfony\Component\HttpClient\MockHttpClient;
+    use Symfony\Component\HttpClient\Response\MockResponse;
+
+    final class ExternalArticleServiceTest extends TestCase
+    {
+        public function testSubmitData(): void
+        {
+            // Arrange
+            $requestData = ['title' => 'Testing with Symfony HTTP Client'];
+            $expectedRequestData = json_encode($requestData, JSON_THROW_ON_ERROR);
+
+            $expectedResponseData = ['id' => 12345];
+            $mockResponseJson = json_encode($expectedResponseData, JSON_THROW_ON_ERROR);
+            $mockResponse = new MockResponse($mockResponseJson, [
+                'http_code' => 201,
+                'response_headers' => ['Content-Type: application/json'],
+            ]);
+
+            $httpClient = new MockHttpClient($mockResponse, 'https://example.com');
+            $service = new ExternalArticleService($httpClient);
+
+            // Act
+            $responseData = $service->createArticle($requestData);
+
+            // Assert
+            self::assertSame('POST', $mockResponse->getRequestMethod());
+            self::assertSame('https://example.com/api/article', $mockResponse->getRequestUrl());
+            self::assertContains(
+                'Content-Type: application/json',
+                $mockResponse->getRequestOptions()['headers']
+            );
+            self::assertSame($expectedRequestData, $mockResponse->getRequestOptions()['body']);
+
+            self::assertSame($responseData, $expectedResponseData);
+        }
+    }
 
 .. _`cURL PHP extension`: https://www.php.net/curl
 .. _`PSR-17`: https://www.php-fig.org/psr/psr-17/

@@ -14,8 +14,7 @@ This authentication method can help you eliminate most of the customer support
 related to authentication (e.g. I forgot my password, how can I change or reset
 my password, etc.)
 
-Login links are supported by Symfony when using the experimental
-authenticator system. You must
+Login links are supported by Symfony when using the authenticator system. You must
 :ref:`enable the authenticator system <security-enable-authenticator-manager>`
 in your configuration to use this feature.
 
@@ -67,15 +66,14 @@ under the firewall. You must configure a ``check_route`` and
     .. code-block:: php
 
         // config/packages/security.php
-        $container->loadFromExtension('security', [
-            'firewalls' => [
-                'main' => [
-                    'login_link' => [
-                        'check_route' => 'login_check',
-                    ],
-                ],
-            ],
-        ]);
+        use Symfony\Config\SecurityConfig;
+
+        return static function (SecurityConfig $security) {
+            $security->firewall('main')
+                ->loginLink()
+                    ->checkRoute('login_check')
+            ;
+        };
 
 The ``signature_properties`` are used to create a signed URL. This must
 contain at least one property of your ``User`` object that uniquely
@@ -373,17 +371,16 @@ seconds). You can customize this using the ``lifetime`` option:
     .. code-block:: php
 
         // config/packages/security.php
-        $container->loadFromExtension('security', [
-            'firewalls' => [
-                'main' => [
-                    'login_link' => [
-                        'check_route' => 'login_check',
-                        // lifetime in seconds
-                        'lifetime' => 300,
-                    ],
-                ],
-            ],
-        ]);
+        use Symfony\Config\SecurityConfig;
+
+        return static function (SecurityConfig $security) {
+            $security->firewall('main')
+                ->loginLink()
+                    ->checkRoute('login_check')
+                    // lifetime in seconds
+                    ->lifetime(300)
+            ;
+        };
 
 .. _security-login-link-signature:
 
@@ -401,7 +398,7 @@ The signed URL contains 3 parameters:
     The UNIX timestamp when the link expires.
 
 ``user``
-    The value returned from ``$user->getUsername()`` for this user.
+    The value returned from ``$user->getUserIdentifier()`` for this user.
 
 ``hash``
     A hash of ``expires``, ``user`` and any configured signature
@@ -448,16 +445,15 @@ You can add more properties to the ``hash`` by using the
     .. code-block:: php
 
         // config/packages/security.php
-        $container->loadFromExtension('security', [
-            'firewalls' => [
-                'main' => [
-                    'login_link' => [
-                        'check_route' => 'login_check',
-                        'signature_properties' => ['id', 'email'],
-                    ],
-                ],
-            ],
-        ]);
+        use Symfony\Config\SecurityConfig;
+
+        return static function (SecurityConfig $security) {
+            $security->firewall('main')
+                ->loginLink()
+                    ->checkRoute('login_check')
+                    ->signatureProperties(['id', 'email'])
+            ;
+        };
 
 The properties are fetched from the user object using the
 :doc:`PropertyAccess component </components/property_access>` (e.g. using
@@ -521,20 +517,20 @@ cache. Enable this support by setting the ``max_uses`` option:
     .. code-block:: php
 
         // config/packages/security.php
-        $container->loadFromExtension('security', [
-            'firewalls' => [
-                'main' => [
-                    'login_link' => [
-                        'check_route' => 'login_check',
-                        // only allow the link to be used 3 times
-                        'max_uses' => 3,
+        use Symfony\Config\SecurityConfig;
 
-                        // optionally, configure the cache pool
-                        //'used_link_cache' => 'cache.redis',
-                    ],
-                ],
-            ],
-        ]);
+        return static function (SecurityConfig $security) {
+            $security->firewall('main')
+                ->loginLink()
+                    ->checkRoute('login_check')
+
+                    // only allow the link to be used 3 times
+                    ->maxUses(3)
+
+                    // optionally, configure the cache pool
+                    //->usedLinkCache('cache.redis')
+            ;
+        };
 
 Make sure there is enough space left in the cache, otherwise invalid links
 can no longer be stored (and thus become valid again). Expired invalid
@@ -594,17 +590,16 @@ the authenticator only handle HTTP POST methods:
     .. code-block:: php
 
         // config/packages/security.php
-        $container->loadFromExtension('security', [
-            'firewalls' => [
-                'main' => [
-                    'login_link' => [
-                        'check_route' => 'login_check',
-                        'check_post_only' => true,
-                        'max_uses' => 1,
-                    ],
-                ],
-            ],
-        ]);
+        use Symfony\Config\SecurityConfig;
+
+        return static function (SecurityConfig $security) {
+            $security->firewall('main')
+                ->loginLink()
+                    ->checkRoute('login_check')
+                    ->checkPostOnly(true)
+                    ->maxUses(1)
+            ;
+        };
 
 Then, use the ``check_route`` controller to render a page that lets the
 user create this POST request (e.g. by clicking a button)::
@@ -726,19 +721,17 @@ Then, configure this service ID as the ``success_handler``:
 
         // config/packages/security.php
         use App\Security\Authentication\AuthenticationSuccessHandler;
+        use Symfony\Config\SecurityConfig;
 
-        $container->loadFromExtension('security', [
-            'firewalls' => [
-                'main' => [
-                    'login_link' => [
-                        'check_route' => 'login_check',
-                        'lifetime' => 600,
-                        'max_uses' => 1,
-                        'success_handler' => AuthenticationSuccessHandler::class,
-                    ],
-                ],
-            ],
-        ]);
+        return static function (SecurityConfig $security) {
+            $security->firewall('main')
+                ->loginLink()
+                    ->checkRoute('login_check')
+                    ->lifetime(600)
+                    ->maxUses(1)
+                    ->successHandler(AuthenticationSuccessHandler::class)
+            ;
+        };
 
 .. tip::
 
